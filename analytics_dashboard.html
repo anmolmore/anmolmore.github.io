@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RM Client Performance Visualizations</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.18.2/plotly.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #2c3e50;
+      margin: 0;
+    }
+    .date-filter {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .date-filter select {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    .chart-container {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .chart-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2c3e50;
+      margin: 0;
+    }
+    .chart-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .chart-actions button {
+      padding: 5px 10px;
+      border: none;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .chart-actions button:hover {
+      background-color: #e0e0e0;
+    }
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .chart-wrapper {
+      height: 350px;
+    }
+    @media (max-width: 768px) {
+      .grid-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="dashboard-header">
+      <h1>RM Client Performance Dashboard</h1>
+      <div class="date-filter">
+        <span>Period:</span>
+        <select id="period-selector">
+          <option value="q1_2025">Q1 2025</option>
+          <option value="q4_2024">Q4 2024</option>
+          <option value="q3_2024">Q3 2024</option>
+          <option value="q2_2024">Q2 2024</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="grid-container">
+      <!-- AUM Managed per RM -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h2 class="chart-title">AUM Managed per RM</h2>
+          <div class="chart-actions">
+            <button>Export</button>
+            <button>Filter</button>
+          </div>
+        </div>
+        <div class="chart-wrapper" id="aum-per-rm"></div>
+      </div>
+      
+      <!-- Growth in AUM Over Time -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h2 class="chart-title">Growth in AUM Over Time</h2>
+          <div class="chart-actions">
+            <button>Export</button>
+            <button>Filter</button>
+          </div>
+        </div>
+        <div class="chart-wrapper" id="aum-growth"></div>
+      </div>
+      
+      <!-- Meeting Count vs. New Clients -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h2 class="chart-title">Meeting Count vs. New Clients</h2>
+          <div class="chart-actions">
+            <button>Export</button>
+            <button>Filter</button>
+          </div>
+        </div>
+        <div class="chart-wrapper" id="meetings-vs-clients"></div>
+      </div>
+      
+      <!-- Client Acquisition & Retention -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h2 class="chart-title">Client Acquisition & Retention</h2>
+          <div class="chart-actions">
+            <button>Export</button>
+            <button>Filter</button>
+          </div>
+        </div>
+        <div class="chart-wrapper" id="client-acquisition-retention"></div>
+      </div>
+      
+      <!-- Uncalled Amount Distribution -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h2 class="chart-title">Uncalled Amount Distribution by RM</h2>
+          <div class="chart-actions">
+            <button>Export</button>
+            <button>Filter</button>
+          </div>
+        </div>
+        <div class="chart-wrapper" id="uncalled-amount"></div>
+      </div>
+      
+      <!-- Client Conversion Rate -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <h2 class="chart-title">Client Conversion Rate</h2>
+          <div class="chart-actions">
+            <button>Export</button>
+            <button>Filter</button>
+          </div>
+        </div>
+        <div class="chart-wrapper" id="conversion-rate"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Sample data
+    const rms = ['Smith', 'Johnson', 'Williams', 'Jones', 'Brown'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    
+    // 1. AUM Managed per RM Chart
+    const aumData = [
+      {
+        x: rms,
+        y: [120, 85, 65, 105, 95],
+        type: 'bar',
+        marker: {
+          color: '#3498db',
+          line: {
+            color: '#2980b9',
+            width: 1.5
+          }
+        },
+        hovertemplate: '<b>%{x}</b><br>AUM: $%{y}M<extra></extra>'
+      },
+      {
+        x: rms,
+        y: [100, 75, 60, 95, 85],
+        type: 'bar',
+        name: 'Target',
+        marker: {
+          color: 'rgba(0,0,0,0.1)',
+          line: {
+            color: 'rgba(0,0,0,0.2)',
+            width: 1
+          }
+        },
+        hovertemplate: '<b>%{x}</b><br>Target: $%{y}M<extra></extra>'
+      }
+    ];
+    
+    const aumLayout = {
+      barmode: 'group',
+      margin: { t: 10, l: 50, r: 30, b: 80 },
+      legend: {
+        orientation: 'h',
+        y: -0.2
+      },
+      yaxis: {
+        title: {
+          text: 'AUM (Millions $)',
+          font: {
+            size: 12
+          }
+        },
+        tickprefix: '$',
+        ticksuffix: 'M'
+      },
+      xaxis: {
+        title: {
+          text: 'Relationship Manager',
+          font: {
+            size: 12
+          }
+        }
+      }
+    };
+    
+    Plotly.newPlot('aum-per-rm', aumData, aumLayout, {responsive: true});
+    
+    // 2. Growth in AUM Over Time
+    const aumGrowthData = [];
+    
+    // Create lines for each RM
+    rms.forEach((rm, index) => {
+      // Generate some random growth data with overall upward trend
+      const baseValue = 50 + Math.random() * 50;
+      const values = months.map((_, i) => {
+        return baseValue * (1 + (i * 0.05) + (Math.random() * 0.1 - 0.05));
+      });
+      
+      aumGrowthData.push({
+        x: months,
+        y: values,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: rm,
+        line: {
+          width: 3
+        },
+        hovertemplate: '<b>%{x}</b><br>AUM: $%{y:.1f}M<extra></extra>'
+      });
+    });
+    
+    const aumGrowthLayout = {
+      margin: { t: 10, l: 50, r: 30, b: 80 },
+      legend: {
+        orientation: 'h',
+        y: -0.2
+      },
+      yaxis: {
+        title: {
+          text: 'AUM (Millions $)',
+          font: {
+            size: 12
+          }
+        },
+        tickprefix: '$',
+        ticksuffix: 'M'
+      },
+      xaxis: {
+        title: {
+          text: 'Month (2024-2025)',
+          font: {
+            size: 12
+          }
+        }
+      }
+    };
+    
+    Plotly.newPlot('aum-growth', aumGrowthData, aumGrowthLayout, {responsive: true});
+    
+    // 3. Meeting Count vs. New Clients
+    const meetingClientData = [{
+      x: [32, 45, 28, 38, 20],
+      y: [8, 12, 6, 9, 4],
+      mode: 'markers',
+      type: 'scatter',
+      text: rms,
+      marker: {
+        size: 12,
+        color: '#3498db',
+        opacity: 0.8,
+        line: {
+          width: 1,
+          color: '#2980b9'
+        }
+      },
+      hovertemplate: '<b>%{text}</b><br>Meetings: %{x}<br>New Clients: %{y}<extra></extra>'
+    }];
+    
+    // Add trendline
+    const x = meetingClientData[0].x;
+    const y = meetingClientData[0].y;
+    
+    // Simple linear regression
+    const xSum = x.reduce((a, b) => a + b, 0);
+    const ySum = y.reduce((a, b) => a + b, 0);
+    const xySum = x.map((xi, i) => xi * y[i]).reduce((a, b) => a + b, 0);
+    const xSqSum = x.map(xi => xi * xi).reduce((a, b) => a + b, 0);
+    const n = x.length;
+    
+    const slope = (n * xySum - xSum * ySum) / (n * xSqSum - xSum * xSum);
+    const intercept = (ySum - slope * xSum) / n;
+    
+    const xRange = [Math.min(...x) - 5, Math.max(...x) + 5];
+    const yRange = xRange.map(xi => slope * xi + intercept);
+    
+    meetingClientData.push({
+      x: xRange,
+      y: yRange,
+      mode: 'lines',
+      type: 'scatter',
+      name: 'Trend',
+      line: {
+        color: 'rgba(255, 99, 132, 0.8)',
+        width: 2,
+        dash: 'dash'
+      },
+      hoverinfo: 'skip'
+    });
+    
+    const meetingClientLayout = {
+      margin: { t: 10, l: 50, r: 30, b: 80 },
+      legend: {
+        orientation: 'h',
+        y: -0.2
+      },
+      yaxis: {
+        title: {
+          text: 'New Clients Acquired',
+          font: {
+            size: 12
+          }
+        },
+        zeroline: false
+      },
+      xaxis: {
+        title: {
+          text: 'Client Meetings (Last Quarter)',
+          font: {
+            size: 12
+          }
+        },
+        zeroline: false
+      },
+      annotations: [{
+        x: xRange[1],
+        y: yRange[1],
+        text: 'R = ' + (slope > 0 ? '+' : '') + slope.toFixed(2),
+        showarrow: false,
+        font: {
+          color: 'rgba(255, 99, 132, 1)'
+        }
+      }]
+    };
+    
+    Plotly.newPlot('meetings-vs-clients', meetingClientData, meetingClientLayout, {responsive: true});
+    
+    // 4. Client Acquisition & Retention
+    const clientAcqRetData = [{
+      x: rms,
+      y: [12, 15, 8, 10, 9],
+      name: 'New Clients',
+      type: 'bar',
+      marker: {
+        color: '#2ecc71'
+      },
+      hovertemplate: '<b>%{x}</b><br>New Clients: %{y}<extra></extra>'
+    }, {
+      x: rms,
+      y: [4, 3, 5, 2, 6],
+      name: 'Lost Clients',
+      type: 'bar',
+      marker: {
+        color: '#e74c3c'
+      },
+      hovertemplate: '<b>%{x}</b><br>Lost Clients: %{y}<extra></extra>'
+    }];
+    
+    const clientAcqRetLayout = {
+      barmode: 'group',
+      margin: { t: 10, l: 50, r: 30, b: 80 },
+      legend: {
+        orientation: 'h',
+        y: -0.2
+      },
+      yaxis: {
+        title: {
+          text: 'Number of Clients',
+          font: {
+            size: 12
+          }
+        }
+      },
+      xaxis: {
+        title: {
+          text: 'Relationship Manager',
+          font: {
+            size: 12
+          }
+        }
+      }
+    };
+    
+    Plotly.newPlot('client-acquisition-retention', clientAcqRetData, clientAcqRetLayout, {responsive: true});
+    
+    // 5. Uncalled Amount Distribution
+    const uncalledData = [{
+      x: rms,
+      y: [15, 32, 8, 22, 18],
+      type: 'bar',
+      marker: {
+        color: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'],
+        line: {
+          width: 1.5,
+          color: 'rgba(255,255,255,0.5)'
+        }
+      },
+      hovertemplate: '<b>%{x}</b><br>Uncalled Amount: $%{y}M<extra></extra>'
+    }];
+    
+    const uncalledLayout = {
+      margin: { t: 10, l: 50, r: 30, b: 80 },
+      yaxis: {
+        title: {
+          text: 'Uncalled Amount (Millions $)',
+          font: {
+            size: 12
+          }
+        },
+        tickprefix: '$',
+        ticksuffix: 'M'
+      },
+      xaxis: {
+        title: {
+          text: 'Relationship Manager',
+          font: {
+            size: 12
+          }
+        }
+      }
+    };
+    
+    Plotly.newPlot('uncalled-amount', uncalledData, uncalledLayout, {responsive: true});
+    
+    // 6. Client Conversion Rate
+    const conversionData = [{
+      values: [65, 35],
+      labels: ['Converted', 'Not Converted'],
+      type: 'pie',
+      hole: 0.6,
+      marker: {
+        colors: ['#2ecc71', '#f1f1f1']
+      },
+      textinfo: 'percent',
+      hoverinfo: 'label+percent',
+      hovertemplate: '<b>%{label}</b><br>%{percent}<extra></extra>'
+    }];
+    
+    // Add donut chart for each RM with small multiples
+    const conversionRates = {
+      'Smith': 68,
+      'Johnson': 72,
+      'Williams': 58,
+      'Jones': 65,
+      'Brown': 61
+    };
+    
+    const conversionLayout = {
+      margin: { t: 10, l: 30, r: 30, b: 80 },
+      showlegend: false,
+      annotations: [
+        {
+          font: {
+            size: 20,
+            color: '#2ecc71',
+            family: 'Arial, sans-serif'
+          },
+          showarrow: false,
+          text: '65%',
+          x: 0.5,
+          y: 0.5
+        },
+        {
+          font: {
+            size: 12
+          },
+          showarrow: false,
+          text: 'Avg. Conversion Rate',
+          x: 0.5,
+          y: 0.35
+        }
+      ],
+      grid: {
+        rows: 1,
+        columns: 1
+      }
+    };
+    
+    Plotly.newPlot('conversion-rate', conversionData, conversionLayout, {responsive: true});
+  </script>
+</body>
+</html>
